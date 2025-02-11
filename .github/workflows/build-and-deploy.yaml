@@ -93,7 +93,7 @@ jobs:
 
       - name: Build Docker Image
         id: docker-build
-        uses: it-incubator/gitops/.github/actions/docker@main
+        uses: it-incubator/ci-cd-pipelines/.github/actions/docker@master
         with:
           context: ./
           dockerfile: ${{ inputs.dockerfile }}
@@ -112,7 +112,7 @@ jobs:
     runs-on: jenkins-server
     steps:
       - name: Update Helm Values
-        uses: it-incubator/gitops/.github/actions/helm@main
+        uses: it-incubator/ci-cd-pipelines/.github/actions/helm@master
         with:
           helm_path: HelmCharts/${{ inputs.project }}/${{ inputs.project }}-${{ inputs.app_name }}/values-${{ inputs.environment }}.yaml
           image_name: ${{ inputs.registry_hostname }}/${{ inputs.project }}-${{ inputs.app_name }}:${{ inputs.run_id }}_${{ inputs.environment }}_${{ inputs.sha }}
@@ -138,12 +138,12 @@ jobs:
           ref: refs/pull/${{ inputs.pull_request_number }}/merge # Checkout merge result of the PR
 
       - name: Install Dependencies
-        uses: it-incubator/gitops/.github/actions/manage-packages@main
+        uses: it-incubator/ci-cd-pipelines/.github/actions/manage-packages@master
         with:
           command: install
 
       - name: Run Database Migrations
-        uses: it-incubator/gitops/.github/actions/manage-packages@main
+        uses: it-incubator/ci-cd-pipelines/.github/actions/manage-packages@master
         with:
           command: migrate:${{ inputs.app_name }}:${{ inputs.environment }}
 

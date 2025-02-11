@@ -20,10 +20,6 @@ inputs:
   project:
     description: Docker project name
     required: true
-  push_to_aws:
-    description: Push to AWS ECR (true/false)
-    required: false
-    default: false
   push_to_dockerhub:
     description: Push to Docker Hub (true/false)
     required: false
@@ -53,16 +49,6 @@ runs:
         echo "DOCKER_BUILD_NAME=$DOCKER_BUILD_NAME" >> $GITHUB_ENV
       shell: bash # Указание оболочки для выполнения команд
 
-    - name: Configure AWS Credentials
-      if: ${{ inputs.push_to_aws == 'true' }}
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        role-to-assume: arn:aws:iam::874733548478:role/GitHubOIDC
-        aws-region: eu-central-1
-
-    - name: Login to AWS ECR
-      if: ${{ inputs.push_to_aws == 'true' }}
-      uses: aws-actions/amazon-ecr-login@v1
 
     - name: Login to Docker Hub
       if: ${{ inputs.push_to_dockerhub == 'true' }}
@@ -80,11 +66,3 @@ runs:
           ${{ env.DOCKER_BUILD_NAME }}
         push: true
 
-    - name: Tag and Push to AWS ECR
-      if: ${{ inputs.push_to_aws == 'true' }}
-      run: |
-        AWS_ECR_TAG="874733548478.dkr.ecr.eu-central-1.amazonaws.com/${{ inputs.project }}:${IMAGE_NAME}"
-        docker tag "$DOCKER_BUILD_NAME" "$AWS_ECR_TAG"
-        docker push "$AWS_ECR_TAG"
-        echo "Pushed to AWS ECR: $AWS_ECR_TAG"
-      shell: bash # Указание оболочки для выполнения команд
