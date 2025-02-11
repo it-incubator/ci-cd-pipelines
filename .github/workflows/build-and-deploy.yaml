@@ -101,7 +101,6 @@ jobs:
           registry_hostname: ${{ inputs.registry_hostname }}
           project: ${{ inputs.project }}-${{ inputs.app_name }}
           push_to_dockerhub: ${{ inputs.push_to_dockerhub }}
-          push_to_aws: ${{ inputs.push_to_aws }} # Set true if needed
           docker_username: ${{ inputs.docker_username }}
           docker_password: ${{ secrets.DOCKER_PASSWORD }}
           GITHUB_RUN_ID: ${{ inputs.run_id }}
