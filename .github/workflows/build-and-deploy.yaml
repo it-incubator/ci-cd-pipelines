@@ -12,6 +12,9 @@ on:
       environment:
         required: true
         type: string
+      deploy_url:
+        required: false
+        type: string
       registry_hostname:
         required: true
         type: string
@@ -148,6 +151,9 @@ jobs:
     needs: [update-helm-chart, migration-db]
     if: always()  # Запускается всегда, даже если migration-db пропущен
     runs-on: jenkins-server
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ inputs.deploy_url }}
     steps:
       - name: Install ArgoCD CLI & Trigger Sync
         run: |
