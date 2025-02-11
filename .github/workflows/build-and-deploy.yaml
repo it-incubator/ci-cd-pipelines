@@ -112,8 +112,7 @@ jobs:
 
 
   sync-argocd:
-    needs: [update-helm-chart, migration-db]
-    if: always()  # Запускается всегда, даже если migration-db пропущен
+    needs: [update-helm-chart]
     runs-on: ubuntu-latest
     environment:
       name: ${{ inputs.environment }}
