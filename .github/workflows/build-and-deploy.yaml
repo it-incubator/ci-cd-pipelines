@@ -79,13 +79,6 @@ jobs:
       docker_build_name: ${{ steps.docker-build.outputs.DOCKER_BUILD_NAME }}
     steps:
       - name: Checkout code
-        if: inputs.environment != 'production'
-        uses: actions/checkout@v3
-        with:
-          ref: refs/pull/${{ inputs.pull_request_number }}/merge # Checkout merge result of the PR
-
-      - name: Checkout code
-        if: inputs.environment == 'production'
         uses: actions/checkout@v3
 
       - name: Build Docker Image
@@ -117,31 +110,6 @@ jobs:
           token: ${{ secrets.TOKEN_GITHUB }}
           project: ${{ inputs.project }}
 
-  migration-db:
-    needs: [update-helm-chart]
-    if: inputs.run_migrations == true  # Запускаем миграции, только если run_migrations = true
-    runs-on: ubuntu-latest
-    env:
-      DB_USER: ${{ secrets.DB_USER }}
-      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-      DB_NAME: ${{ inputs.db_name }}
-      DB_HOST: ${{ secrets.DB_HOST }}
-      DB_PORT: ${{ inputs.db_port }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-        with:
-          ref: refs/pull/${{ inputs.pull_request_number }}/merge # Checkout merge result of the PR
-
-      - name: Install Dependencies
-        uses: it-incubator/ci-cd-pipelines/.github/actions/manage-packages@master
-        with:
-          command: install
-
-      - name: Run Database Migrations
-        uses: it-incubator/ci-cd-pipelines/.github/actions/manage-packages@master
-        with:
-          command: migrate:${{ inputs.app_name }}:${{ inputs.environment }}
 
   sync-argocd:
     needs: [update-helm-chart, migration-db]
