@@ -1,0 +1,166 @@
+name: Build and Deploy Application
+
+on:
+  workflow_call:
+    inputs:
+      pull_request_number:
+        required: true
+        type: string
+      comment_body:
+        required: true
+        type: string
+      environment:
+        required: true
+        type: string
+      registry_hostname:
+        required: true
+        type: string
+      argocd_server:
+        required: true
+        type: string
+      app_name:
+        required: true
+        type: string
+      project:
+        required: true
+        type: string
+      run_migrations:
+        required: false
+        type: boolean
+        default: false
+      docker_username:
+        required: false
+        type: string
+      dockerfile:
+        required: false
+        type: string
+        default: Dockerfile
+      run_id:
+        required: true
+        type: string
+      sha:
+        required: true
+        type: string
+      db_port:
+        required: false
+        type: string
+      db_name:
+        required: false
+        type: string
+      push_to_dockerhub:
+        required: false
+        type: string
+        default: true
+      push_to_aws:
+        required: false
+        type: string
+        default: false
+    secrets:
+      DOCKER_PASSWORD:
+        required: false
+      TOKEN_GITHUB:
+        required: true
+      ARGOCD_AUTH_TOKEN:
+        required: true
+      DB_USER:
+        required: false
+      DB_PASSWORD:
+        required: false
+      DB_HOST:
+        required: false
+
+jobs:
+  build:
+    runs-on: jenkins-server
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      docker_build_name: ${{ steps.docker-build.outputs.DOCKER_BUILD_NAME }}
+    steps:
+      - name: Checkout code
+        if: inputs.environment != 'production'
+        uses: actions/checkout@v3
+        with:
+          ref: refs/pull/${{ inputs.pull_request_number }}/merge # Checkout merge result of the PR
+
+      - name: Checkout code
+        if: inputs.environment == 'production'
+        uses: actions/checkout@v3
+
+      - name: Build Docker Image
+        id: docker-build
+        uses: it-incubator/gitops/.github/actions/docker@main
+        with:
+          context: ./
+          dockerfile: ${{ inputs.dockerfile }}
+          env_type: ${{ inputs.environment }}
+          registry_hostname: ${{ inputs.registry_hostname }}
+          project: ${{ inputs.project }}-${{ inputs.app_name }}
+          push_to_dockerhub: ${{ inputs.push_to_dockerhub }}
+          push_to_aws: ${{ inputs.push_to_aws }} # Set true if needed
+          docker_username: ${{ inputs.docker_username }}
+          docker_password: ${{ secrets.DOCKER_PASSWORD }}
+          GITHUB_RUN_ID: ${{ inputs.run_id }}
+          GITHUB_SHA: ${{ inputs.sha }}
+
+  update-helm-chart:
+    needs: [build]
+    runs-on: jenkins-server
+    steps:
+      - name: Update Helm Values
+        uses: it-incubator/gitops/.github/actions/helm@main
+        with:
+          helm_path: HelmCharts/${{ inputs.project }}/${{ inputs.project }}-${{ inputs.app_name }}/values-${{ inputs.environment }}.yaml
+          image_name: ${{ inputs.registry_hostname }}/${{ inputs.project }}-${{ inputs.app_name }}:${{ inputs.run_id }}_${{ inputs.environment }}_${{ inputs.sha }}
+          branch: main
+          gitops_repo: it-incubator/gitops
+          token: ${{ secrets.TOKEN_GITHUB }}
+          project: ${{ inputs.project }}
+
+  migration-db:
+    needs: [update-helm-chart]
+    if: inputs.run_migrations == true  # Запускаем миграции, только если run_migrations = true
+    runs-on: jenkins-server
+    env:
+      DB_USER: ${{ secrets.DB_USER }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      DB_NAME: ${{ inputs.db_name }}
+      DB_HOST: ${{ secrets.DB_HOST }}
+      DB_PORT: ${{ inputs.db_port }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          ref: refs/pull/${{ inputs.pull_request_number }}/merge # Checkout merge result of the PR
+
+      - name: Install Dependencies
+        uses: it-incubator/gitops/.github/actions/manage-packages@main
+        with:
+          command: install
+
+      - name: Run Database Migrations
+        uses: it-incubator/gitops/.github/actions/manage-packages@main
+        with:
+          command: migrate:${{ inputs.app_name }}:${{ inputs.environment }}
+
+  sync-argocd:
+    needs: [update-helm-chart, migration-db]
+    if: always()  # Запускается всегда, даже если migration-db пропущен
+    runs-on: jenkins-server
+    steps:
+      - name: Install ArgoCD CLI & Trigger Sync
+        run: |
+          echo "Downloading ArgoCD CLI..."
+          export ARGOCD_AUTH_TOKEN=${{ secrets.ARGOCD_AUTH_TOKEN }}
+          export ARGOCD_SERVER=${{ inputs.argocd_server }}
+          curl -sSL -o /tmp/argocd https://${{ inputs.argocd_server }}/download/argocd-linux-amd64
+          chmod +x /tmp/argocd
+          sudo mv /tmp/argocd /usr/local/bin/argocd
+          
+          echo "Triggering ArgoCD Sync..."
+          
+          # Запускаем синхронизацию
+          argocd app sync ${{ inputs.project }}-${{ inputs.app_name }}
+          argocd app wait ${{ inputs.project }}-${{ inputs.app_name }}
+

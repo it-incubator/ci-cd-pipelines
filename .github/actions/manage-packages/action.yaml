@@ -1,0 +1,33 @@
+name: Manage Packages
+description: Install dependencies and run commands using the appropriate package manager
+
+inputs:
+  command:
+    description: Command to run (e.g., install, test)
+    required: true
+    default: install
+
+runs:
+  using: "composite"
+  steps:
+    - name: Detect Package Manager
+      id: detect
+      run: |
+        if [ -f "yarn.lock" ]; then
+          echo "package_manager=yarn" >> $GITHUB_ENV
+        elif [ -f "pnpm-lock.yaml" ]; then
+          echo "package_manager=pnpm" >> $GITHUB_ENV
+        else
+          echo "package_manager=npm" >> $GITHUB_ENV
+        fi
+      shell: bash # Указание оболочки для выполнения команд
+    - name: Run Command with Package Manager
+      run: |
+        if [ "$package_manager" == "yarn" ]; then
+          yarn ${{ inputs.command }}
+        elif [ "$package_manager" == "pnpm" ]; then
+          pnpm ${{ inputs.command }}
+        else
+          npm ${{ inputs.command }}
+        fi
+      shell: bash # Указание оболочки для выполнения команд

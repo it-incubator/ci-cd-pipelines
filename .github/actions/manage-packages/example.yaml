@@ -1,0 +1,23 @@
+name: Deploy Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install Dependencies
+        uses: your-org/common-pipelines/.github/actions/manage-packages@main
+        with:
+          command: install
+
+      - name: Run Tests
+        uses: your-org/common-pipelines/.github/actions/manage-packages@main
+        with:
+          command: test

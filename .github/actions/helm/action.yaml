@@ -1,0 +1,103 @@
+name: Update Helm Values
+description: Update image tag in Helm values.yaml file and create/merge a Pull Request in the GitOps repository
+
+inputs:
+  helm_path:
+    description: Path to the Helm chart values.yaml file
+    required: true
+  image_name:
+    description: Full Docker image name (including tag)
+    required: true
+  branch:
+    description: Branch in the GitOps repo to commit changes
+    required: true
+  gitops_repo:
+    description: URL of the GitOps repository
+    required: true
+  token:
+    description: GitHub Token for authentication
+    required: true
+  project:
+    description: Project name
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout GitOps Repository
+      uses: actions/checkout@v3
+      with:
+        repository: ${{ inputs.gitops_repo }}
+        token: ${{ inputs.token }}
+        ref: ${{ inputs.branch }}
+        path: gitops-repo
+
+    - name: Install yq
+      run: |
+        echo "Installing yq..."
+        sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+        sudo chmod a+x /usr/local/bin/yq
+      shell: bash
+
+    - name: Update values.yaml
+      run: |
+        echo "Updating Helm values.yaml file..."
+        cd gitops-repo
+        yq e -i ".container.image = \"${{ inputs.image_name }}\"" "${{ inputs.helm_path }}"
+        echo "Helm values.yaml updated successfully."
+      shell: bash
+
+    - name: Configure Git
+      run: |
+        cd gitops-repo
+        git config --global user.email "github-actions@github.com"
+        git config --global user.name "GitHub Actions"
+      shell: bash
+
+    - name: Commit and Create New Branch
+      run: |
+        cd gitops-repo
+        BRANCH_NAME="update-image-${{ github.run_id }}"
+        git checkout -b "$BRANCH_NAME"
+        git add "${{ inputs.helm_path }}"
+        git commit -m "Update image tag to ${{ inputs.image_name }}"
+        git push origin "$BRANCH_NAME"
+      shell: bash
+
+    - name: Install jq
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y jq
+      shell: bash
+
+    - name: Create Pull Request via GitHub API
+      id: create_pr
+      run: |
+        response=$(curl -X POST \
+          -H "Authorization: Bearer ${{ inputs.token }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/${{ inputs.gitops_repo }}/pulls \
+          -d "{
+            \"title\": \"${{ inputs.project }} Update image tag to ${{ inputs.image_name }}\",
+            \"body\": \"This PR updates the Helm values.yaml to use the new image: ${{ inputs.image_name }}\",
+            \"head\": \"update-image-${{ github.run_id }}\",
+            \"base\": \"${{ inputs.branch }}\"
+          }")
+
+        # Сохраняем номер PR из ответа
+        echo "PR_NUMBER=$(echo $response | jq -r '.number')" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Merge Pull Request
+      run: |
+        echo "Merging Pull Request #$PR_NUMBER"
+        curl -X PUT \
+          -H "Authorization: Bearer ${{ inputs.token }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/${{ inputs.gitops_repo }}/pulls/$PR_NUMBER/merge \
+          -d '{
+            "commit_title": "Automatically merged PR #'"$PR_NUMBER"'",
+            "merge_method": "squash"
+          }'
+      shell: bash
+
