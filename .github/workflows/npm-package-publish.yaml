@@ -14,7 +14,7 @@ on:
         type: string
 
 jobs:
-  build-and-deploy:
+  build-and-publish:
     runs-on: ubuntu-latest
     container:
       image: node:${{ inputs.node_version }}
