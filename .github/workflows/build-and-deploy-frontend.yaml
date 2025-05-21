@@ -69,18 +69,18 @@ jobs:
           version: 10
 
       - name: Install Dependencies
-        uses: it-incubator/ci-cd-pipeplines/.github/actions/manage-packages@main
+        uses: it-incubator/ci-cd-pipeplines/.github/actions/manage-packages@master
         with:
           command: install
 
       - name: Validate environment
         if: ${{ inputs.validate_env_command != '' }}
-        uses: it-incubator/ci-cd-pipeplines/.github/actions/manage-packages@main
+        uses: it-incubator/ci-cd-pipeplines/.github/actions/manage-packages@master
         with:
           command: ${{ inputs.validate_env_command }}
 
       - name: Build project
-        uses: it-incubator/ci-cd-pipeplines/.github/actions/manage-packages@main
+        uses: it-incubator/ci-cd-pipeplines/.github/actions/manage-packages@master
         with:
           command: ${{ inputs.build_command }}
 
