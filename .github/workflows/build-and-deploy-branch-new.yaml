@@ -84,7 +84,7 @@ on:
 
 jobs:
   build:
-    runs-on: jenkins-server
+    runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
@@ -114,7 +114,7 @@ jobs:
 
   update-helm-chart:
     needs: [build]
-    runs-on: jenkins-server
+    runs-on: ubuntu-latest
     steps:
       - name: Update Helm Values
         uses: it-incubator/gitops/.github/actions/helm@main
@@ -130,7 +130,7 @@ jobs:
   migration-db:
     needs: [update-helm-chart]
     if: inputs.run_migrations == true  # Запускаем миграции, только если run_migrations = true
-    runs-on: jenkins-server
+    runs-on: ubuntu-latest
     env:
       DB_USER: ${{ secrets.DB_USER }}
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
@@ -161,7 +161,7 @@ jobs:
   sync-argocd:
     needs: [update-helm-chart]
 #    if: always()  # Запускается всегда, даже если migration-db пропущен
-    runs-on: jenkins-server
+    runs-on: ubuntu-latest
     environment:
       name: ${{ inputs.environment }}
       url: ${{ inputs.deploy_url }}
