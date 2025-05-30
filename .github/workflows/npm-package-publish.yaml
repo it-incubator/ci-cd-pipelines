@@ -12,6 +12,10 @@ on:
       environment:
         required: true
         type: string
+    secrets:
+      NODE_AUTH_TOKEN: 
+        required: true
+      
 
 jobs:
   build-and-publish:
