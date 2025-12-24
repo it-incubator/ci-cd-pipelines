@@ -46,14 +46,14 @@ jobs:
         uses: it-incubator/ci-cd-pipelines/.github/actions/manage-packages@master
         with:
           command: ${{ inputs.build_command }}
-      - name: Preparing .npmrc
-        run: |
-          ls -ltr
-          pwd
-          chmod +x preparing.sh
-          ./preparing.sh $NPM_ACCESS_TOKEN
-        env:
-          NPM_ACCESS_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
+      # - name: Preparing .npmrc
+      #   run: |
+      #     ls -ltr
+      #     pwd
+      #     chmod +x preparing.sh
+      #     ./preparing.sh $NPM_ACCESS_TOKEN
+      #   env:
+      #     NPM_ACCESS_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
           
       - name: Publish
         run: pnpm release
