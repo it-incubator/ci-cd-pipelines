@@ -15,7 +15,10 @@ on:
     secrets:
       NODE_AUTH_TOKEN: 
         required: true
-      
+
+permissions:
+  id-token: write  # Required for OIDC
+  contents: read
 
 jobs:
   build-and-publish:
